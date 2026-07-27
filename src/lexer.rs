@@ -1,8 +1,7 @@
-
 use crate::core::{TokenType, Text};
 
 
-pub fn scanner(text: &mut Text, tokens: &mut Vec<TokenType>){
+pub fn scan(text: &mut Text, tokens: &mut Vec<TokenType>){
 	while text.current < text.length {
 		
 		let bytes = text.source.as_bytes();
@@ -16,6 +15,15 @@ pub fn scanner(text: &mut Text, tokens: &mut Vec<TokenType>){
 				text.current += 1;
 				}
 		'=' => {tokens.push(TokenType::EQ);
+				text.current += 1;
+				}
+		'+' => {tokens.push(TokenType::PLUS);
+				text.current += 1;
+				}
+		'-' => {tokens.push(TokenType::MINUS);
+				text.current += 1;
+				}
+		';' => {tokens.push(TokenType::SEMICOLON);
 				text.current += 1;
 				}
 		c if c.is_alphabetic()=> {
