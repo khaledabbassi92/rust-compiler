@@ -5,7 +5,6 @@ pub fn parse(parserstate: &mut ParserState, astlist: &mut Vec<ASTNode>) {
 
     while parserstate.position < parserstate.tokens.len() {
 
-        // Skip semicolons
         if parserstate.tokens[parserstate.position] == TokenType::SEMICOLON {
             parserstate.position += 1;
             continue;
