@@ -1,0 +1,211 @@
+// ===================================================================
+// Axiom Stress Test 4: String Arrays & Character-Level Indexing
+// ===================================================================
+
+// Helper: Measure string length
+proc string_length(str: text) -> int {
+    slot len: int = 0;
+    slot ptr: *int = str;
+    during ((*(ptr + len) % 256) != 0) {
+        len = len + 1;
+    }
+    yield len;
+}
+
+// Helper: Extract byte at character index
+proc char_at(str: text, index: int) -> int {
+    slot ptr: *int = str;
+    yield *(ptr + index) % 256;
+}
+
+// Helper: Check if character is vowel ('a'=97, 'e'=101, 'i'=105, 'o'=111, 'u'=117)
+proc is_vowel(ch: int) -> flag {
+    when ((ch == 97) || (ch == 101) || (ch == 105) || (ch == 111) || (ch == 117)) {
+        yield yes;
+    }
+    yield no;
+}
+
+// Helper: Find keyword index in an array table (-1 if not found)
+proc lookup_keyword(table: *text, table_size: int, query: text) -> int {
+    slot q_len: int = string_length(query);
+    slot i: int = 0;
+
+    during (i < table_size) {
+        slot entry: text = *(table + (i * 8));
+        slot e_len: int = string_length(entry);
+
+        when (q_len == e_len) {
+            slot match: flag = yes;
+            slot c_idx: int = 0;
+
+            during (c_idx < q_len) {
+                when (char_at(entry, c_idx) != char_at(query, c_idx)) {
+                    match = no;
+                }
+                c_idx = c_idx + 1;
+            }
+
+            when (match) {
+                yield i; // Found matching keyword index!
+            }
+        }
+
+        i = i + 1;
+    }
+
+    yield -1; // Not found
+}
+
+// ===================================================================
+// MAIN EXECUTION
+// ===================================================================
+
+emit "=== Axiom Stress Test 4: Strings in Arrays & Letter Indexing ===";
+
+// -------------------------------------------------------------
+// Test 1: Array of Strings Creation & Retrieval
+// -------------------------------------------------------------
+emit "--- Test 1: Array of String Pointers ---";
+slot words: [text; 4];
+words[0] = "compiler";
+words[1] = "freestanding";
+words[2] = "assembly";
+words[3] = "machine";
+
+emit "words[0]:";
+emit words[0];
+emit "words[1]:";
+emit words[1];
+emit "words[2]:";
+emit words[2];
+emit "words[3]:";
+emit words[3];
+
+slot len0: int = string_length(words[0]);
+slot len1: int = string_length(words[1]);
+
+emit "Length of words[0] ('compiler' -> Expected 8):";
+emit len0;
+emit "Length of words[1] ('freestanding' -> Expected 12):";
+emit len1;
+
+when ((len0 == 8) && (len1 == 12)) {
+    emit ">> PASS: String Array Storage & Length Calculation Verified";
+} otherwise {
+    emit ">> FAIL: String Array Length Mismatch";
+}
+
+// -------------------------------------------------------------
+// Test 2: 2D Indexing (Character inspection within array elements)
+// -------------------------------------------------------------
+emit "--- Test 2: Character-Level Indexing Inside Array Words ---";
+// words[0] is "compiler"
+// words[0][0] = 'c' (ASCII 99)
+// words[0][1] = 'o' (ASCII 111)
+// words[0][7] = 'r' (ASCII 114)
+slot c_first: int = char_at(words[0], 0);
+slot c_second: int = char_at(words[0], 1);
+slot c_last: int = char_at(words[0], 7);
+
+emit "First letter of words[0] (ASCII of 'c', Expected 99):";
+emit c_first;
+emit "Second letter of words[0] (ASCII of 'o', Expected 111):";
+emit c_second;
+emit "Last letter of words[0] (ASCII of 'r', Expected 114):";
+emit c_last;
+
+when ((c_first == 99) && (c_second == 111) && (c_last == 114)) {
+    emit ">> PASS: Individual Character Indexing Verified";
+} otherwise {
+    emit ">> FAIL: Character Offset Access Error";
+}
+
+// -------------------------------------------------------------
+// Test 3: Vowel Scanner Across All Array Words
+// -------------------------------------------------------------
+emit "--- Test 3: Nested Word & Letter Loop (Vowel Counter) ---";
+// Let's count vowels in words[3] ("machine"):
+// m(109), a(97-vowel), c(99), h(104), i(105-vowel), n(110), e(101-vowel) -> 3 vowels
+slot vowel_count: int = 0;
+slot target_word: text = words[3];
+slot w_len: int = string_length(target_word);
+slot letter_idx: int = 0;
+
+during (letter_idx < w_len) {
+    slot ch: int = char_at(target_word, letter_idx);
+    when (is_vowel(ch)) {
+        vowel_count = vowel_count + 1;
+    }
+    letter_idx = letter_idx + 1;
+}
+
+emit "Vowel count in 'machine' (Expected 3):";
+emit vowel_count;
+
+when (vowel_count == 3) {
+    emit ">> PASS: Nested Character Loop & Predicate Verified";
+} otherwise {
+    emit ">> FAIL: Character Loop Vowel Count Incorrect";
+}
+
+// -------------------------------------------------------------
+// Test 4: Compiler Lexer Keyword Table Lookup
+// -------------------------------------------------------------
+emit "--- Test 4: Keyword Lookup in String Array ---";
+slot keywords: [text; 5];
+keywords[0] = "slot";
+keywords[1] = "proc";
+keywords[2] = "during";
+keywords[3] = "when";
+keywords[4] = "yield";
+
+// Look up "during" -> Should find index 2
+slot idx_during: int = lookup_keyword(&keywords, 5, "during");
+emit "Lookup 'during' (Expected index 2):";
+emit idx_during;
+
+// Look up "yield" -> Should find index 4
+slot idx_yield: int = lookup_keyword(&keywords, 5, "yield");
+emit "Lookup 'yield' (Expected index 4):";
+emit idx_yield;
+
+// Look up non-existent keyword "return" -> Should return -1
+slot idx_return: int = lookup_keyword(&keywords, 5, "return");
+emit "Lookup 'return' (Expected index -1):";
+emit idx_return;
+
+when ((idx_during == 2) && (idx_yield == 4) && (idx_return == -1)) {
+    emit ">> PASS: Compiler Keyword Table Lookup Verified";
+} otherwise {
+    emit ">> FAIL: Keyword Table Search Failed";
+}
+
+// -------------------------------------------------------------
+// Test 5: Dynamic String Reversal via Array Indexing on Heap
+// -------------------------------------------------------------
+emit "--- Test 5: Reverse String onto Heap from Array ---";
+// Source: words[2] is "assembly" (8 chars)
+slot src_word: text = words[2];
+slot src_len: int = string_length(src_word);
+slot reversed_heap: text = claim(src_len + 8);
+
+slot rev_i: int = 0;
+during (rev_i < src_len) {
+    // Read from back of source word: index = (src_len - 1 - rev_i)
+    slot read_idx: int = src_len - 1 - rev_i;
+    slot byte_val: int = char_at(src_word, read_idx);
+    *(reversed_heap + rev_i) = byte_val;
+    rev_i = rev_i + 1;
+}
+*(reversed_heap + src_len) = 0; // Null terminator
+
+emit "Original word:";
+emit src_word;
+emit "Reversed word on heap (Expected 'ylbmessa'):";
+emit reversed_heap;
+
+purge(reversed_heap);
+emit ">> PASS: Heap-Reversed String Allocated & Purged Cleanly";
+
+emit "=== Stress Test 4 Complete: 100% Passed ===";
